@@ -1,0 +1,6 @@
+selected resource name:		pl_project_inc_scd
+selected resource type:		pipeline
+workspace name:			wsp-ncpl-singhh
+workspace location:		australiaeast
+subscription id:		91a74185-4d48-411e-bc73-bb2295b0a30c
+time of download (UTC):		Mon, 24 Mar 2025 18:51:47 GMT

@@ -1,0 +1,405 @@
+{
+    "name": "pl_project_inc_scd",
+    "properties": {
+        "activities": [
+            {
+                "name": "WatermarkLookup",
+                "type": "Lookup",
+                "dependsOn": [
+                    {
+                        "activity": "Set variable",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlServerSource",
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "ds_onprem_sqldb",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "Schema_Name": "dbo",
+                            "Table_Name": "Watermark"
+                        }
+                    },
+                    "firstRowOnly": false
+                }
+            },
+            {
+                "name": "ForEach",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "WatermarkLookup",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('WatermarkLookup').output.value",
+                        "type": "Expression"
+                    },
+                    "activities": [
+                        {
+                            "name": "GetMaxValueLookup",
+                            "type": "Lookup",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "SqlServerSource",
+                                    "sqlReaderQuery": {
+                                        "value": "select max(@{item().DELTACOLUMN}) as maxvalue from  @{item().SCHEMANAME}.@{item().TABLENAME}",
+                                        "type": "Expression"
+                                    },
+                                    "queryTimeout": "02:00:00",
+                                    "partitionOption": "None"
+                                },
+                                "dataset": {
+                                    "referenceName": "ds_onprem_sqldb",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "Schema_Name": "''",
+                                        "Table_Name": "''"
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "name": "Copy data",
+                            "type": "Copy",
+                            "dependsOn": [
+                                {
+                                    "activity": "GetMaxValueLookup",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "SqlServerSource",
+                                    "sqlReaderQuery": {
+                                        "value": "SELECT * FROM @{item().TABLENAME} WHERE @{item().DELTACOLUMN}>'@{item().LPV}'",
+                                        "type": "Expression"
+                                    },
+                                    "queryTimeout": "02:00:00",
+                                    "partitionOption": "None"
+                                },
+                                "sink": {
+                                    "type": "DelimitedTextSink",
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSWriteSettings"
+                                    },
+                                    "formatSettings": {
+                                        "type": "DelimitedTextWriteSettings",
+                                        "quoteAllText": true,
+                                        "fileExtension": ".txt"
+                                    }
+                                },
+                                "enableStaging": false,
+                                "translator": {
+                                    "type": "TabularTranslator",
+                                    "typeConversion": true,
+                                    "typeConversionSettings": {
+                                        "allowDataTruncation": true,
+                                        "treatBooleanAsNumber": false
+                                    }
+                                }
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "ds_onprem_sqldb",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "Schema_Name": "''",
+                                        "Table_Name": "''"
+                                    }
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "ds_ADLS_Sink",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "Folder_Name": "@item().FOLDERNAME",
+                                        "File_Name": {
+                                            "value": "@concat(item().TABLENAME, '_', variables('fileName'))",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Watermark Update Stored procedure",
+                            "type": "SqlServerStoredProcedure",
+                            "dependsOn": [
+                                {
+                                    "activity": "Copy data",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "storedProcedureName": "[dbo].[USP_WATERMARK_VALUE_UPDATE]",
+                                "storedProcedureParameters": {
+                                    "LPV": {
+                                        "value": {
+                                            "value": "@activity('GetMaxValueLookUp').output.firstRow.maxvalue",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "TABLE_NAME": {
+                                        "value": {
+                                            "value": "@item().TABLENAME",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    }
+                                }
+                            },
+                            "linkedServiceName": {
+                                "referenceName": "ls_onprem_sqldb",
+                                "type": "LinkedServiceReference"
+                            }
+                        },
+                        {
+                            "name": "If Condition",
+                            "type": "IfCondition",
+                            "dependsOn": [
+                                {
+                                    "activity": "Watermark Update Stored procedure",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "userProperties": [],
+                            "typeProperties": {
+                                "expression": {
+                                    "value": "@and( not(equals(item().TableName, 'Books')), not(equals(item().TableName, 'Members')) )\r\n",
+                                    "type": "Expression"
+                                },
+                                "ifTrueActivities": [
+                                    {
+                                        "name": "Copy data to Azure SQL DB",
+                                        "type": "Copy",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "timeout": "0.12:00:00",
+                                            "retry": 0,
+                                            "retryIntervalInSeconds": 30,
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "source": {
+                                                "type": "DelimitedTextSource",
+                                                "storeSettings": {
+                                                    "type": "AzureBlobFSReadSettings",
+                                                    "recursive": true,
+                                                    "enablePartitionDiscovery": false
+                                                },
+                                                "formatSettings": {
+                                                    "type": "DelimitedTextReadSettings"
+                                                }
+                                            },
+                                            "sink": {
+                                                "type": "AzureSqlSink",
+                                                "writeBehavior": "insert",
+                                                "sqlWriterUseTableLock": false
+                                            },
+                                            "enableStaging": false,
+                                            "translator": {
+                                                "type": "TabularTranslator",
+                                                "typeConversion": true,
+                                                "typeConversionSettings": {
+                                                    "allowDataTruncation": true,
+                                                    "treatBooleanAsNumber": false
+                                                }
+                                            }
+                                        },
+                                        "inputs": [
+                                            {
+                                                "referenceName": "ds_ADLS_Sink",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "Folder_Name": {
+                                                        "value": "@item().FolderName",
+                                                        "type": "Expression"
+                                                    },
+                                                    "File_Name": {
+                                                        "value": "@concat(item().TableName, '_', variables('fileName'))",
+                                                        "type": "Expression"
+                                                    }
+                                                }
+                                            }
+                                        ],
+                                        "outputs": [
+                                            {
+                                                "referenceName": "ds_SqlDB_Source",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "Schema_Name": {
+                                                        "value": "@item().SchemaName",
+                                                        "type": "Expression"
+                                                    },
+                                                    "Table_Name": {
+                                                        "value": "@item().TableName",
+                                                        "type": "Expression"
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "Data flow SCD Type1",
+                "type": "ExecuteDataFlow",
+                "dependsOn": [
+                    {
+                        "activity": "ForEach",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataflow": {
+                        "referenceName": "df_scd1",
+                        "type": "DataFlowReference",
+                        "parameters": {
+                            "file_name": {
+                                "value": "'@{concat('Books', '_', variables('fileName'))}'",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    "compute": {
+                        "coreCount": 8,
+                        "computeType": "General"
+                    },
+                    "traceLevel": "Fine"
+                }
+            },
+            {
+                "name": "Data flow SCD Type2",
+                "type": "ExecuteDataFlow",
+                "dependsOn": [
+                    {
+                        "activity": "ForEach",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataflow": {
+                        "referenceName": "df_scd2",
+                        "type": "DataFlowReference",
+                        "parameters": {
+                            "file_name": {
+                                "value": "'@{concat('Members', '_', variables('fileName'))}'",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    "compute": {
+                        "coreCount": 8,
+                        "computeType": "General"
+                    },
+                    "traceLevel": "Fine"
+                }
+            },
+            {
+                "name": "Set variable",
+                "type": "SetVariable",
+                "dependsOn": [],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "fileName",
+                    "value": {
+                        "value": "@concat(utcNow(),'.csv')",
+                        "type": "Expression"
+                    }
+                }
+            }
+        ],
+        "variables": {
+            "fileName": {
+                "type": "String"
+            }
+        },
+        "annotations": [],
+        "lastPublishTime": "2025-03-18T15:48:51Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

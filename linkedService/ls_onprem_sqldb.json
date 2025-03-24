@@ -1,0 +1,16 @@
+{
+    "name": "ls_onprem_sqldb",
+    "type": "Microsoft.Synapse/workspaces/linkedservices",
+    "properties": {
+        "annotations": [],
+        "type": "SqlServer",
+        "typeProperties": {
+            "connectionString": "integrated security=False;data source=LAPTOP-2KFBB2GF\\SQLEXPRESS;initial catalog=mylocaldb;user id=superadmin",
+            "encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiI0NmEyZjZiYS0xMGUzLTRkZmYtODkyYS00MDg1MGE2OTliMGEiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+        },
+        "connectVia": {
+            "referenceName": "SelfHostedIntegrationRuntime",
+            "type": "IntegrationRuntimeReference"
+        }
+    }
+}

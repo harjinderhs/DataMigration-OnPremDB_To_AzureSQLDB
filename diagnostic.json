@@ -1,0 +1,23 @@
+{
+    "now": "2025-03-24T18:51:47.212Z",
+    "perfNow": 1366044.2999999523,
+    "diagnosticCorrelation": "0f8b5635-ada3-4daa-96e2-a82e422ba9c8",
+    "source": "DownloadSupportFiles",
+    "environment": {
+        "productName": "a365",
+        "buildVersion": "25.0303.07",
+        "environmentType": 9,
+        "resourceName": "wsp-ncpl-singhh",
+        "resourceRegion": "australiaeast",
+        "resourceGroup": "rg-ncpl-hsingh",
+        "subscriptionId": "91a74185-4d48-411e-bc73-bb2295b0a30c",
+        "sessionId": "QmYAUG6+YlcsSoRFiT0BRE",
+        "operationId": "Bvfv?",
+        "gitType": "live",
+        "loggingKey": "ef2061f8-d9b6-4cf2-9ab3-367b8394bb40"
+    },
+    "additionalInfo": {
+        "selectedResource": "pl_project_inc_scd",
+        "selectedResourceType": "pipeline"
+    }
+}

@@ -1,0 +1,31 @@
+{
+    "name": "ds_onprem_sqldb",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "ls_onprem_sqldb",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "Schema_Name": {
+                "type": "string"
+            },
+            "Table_Name": {
+                "type": "string"
+            }
+        },
+        "annotations": [],
+        "type": "SqlServerTable",
+        "schema": [],
+        "typeProperties": {
+            "schema": {
+                "value": "@dataset().Schema_Name",
+                "type": "Expression"
+            },
+            "table": {
+                "value": "@dataset().Table_Name",
+                "type": "Expression"
+            }
+        }
+    },
+    "type": "Microsoft.Synapse/workspaces/datasets"
+}

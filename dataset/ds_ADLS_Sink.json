@@ -1,0 +1,39 @@
+{
+    "name": "ds_ADLS_Sink",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "wsp-ncpl-singhh-WorkspaceDefaultStorage",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "Folder_Name": {
+                "type": "string"
+            },
+            "File_Name": {
+                "type": "string"
+            }
+        },
+        "annotations": [],
+        "type": "DelimitedText",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobFSLocation",
+                "fileName": {
+                    "value": "@dataset().File_Name",
+                    "type": "Expression"
+                },
+                "folderPath": {
+                    "value": "@dataset().Folder_Name",
+                    "type": "Expression"
+                },
+                "fileSystem": "mycontainer"
+            },
+            "columnDelimiter": ",",
+            "escapeChar": "\\",
+            "firstRowAsHeader": true,
+            "quoteChar": "\""
+        },
+        "schema": []
+    },
+    "type": "Microsoft.Synapse/workspaces/datasets"
+}
